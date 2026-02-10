@@ -1,7 +1,11 @@
-/* ========================================
-   CalorieTracker - Main Styles
-   Sistema de Diseño y Estilos Base
-   ======================================== */
+/* @font-face for J-LOG Rebellion Slab Serif (local file) */
+@font-face {
+    font-family: 'J-LOG Rebellion';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../fonts/j-log-rebellion-slab-serif-small-caps.otf') format('opentype');
+    font-display: swap;
+}
 
 /* CSS Variables - Design System */
 :root {
@@ -66,7 +70,8 @@
     --space-2xl: 48px;
 
     /* Typography */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-family: 'Branding Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-family-heading: 'J-LOG Rebellion', 'Georgia', serif;
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-base: 1rem;
@@ -88,6 +93,18 @@
     --z-overlay: 300;
     --z-modal: 400;
     --z-toast: 500;
+}
+
+/* Heading Typography - J-LOG Rebellion */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 /* Reset & Base Styles */

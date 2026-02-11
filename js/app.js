@@ -675,12 +675,11 @@ const App = {
     },
 
     /**
-     * Process photo with AI recognition (simulation)
-     * In production, this would call a real AI API like Google Vision
+     * Process photo with AI recognition
+     * Sends image to Supabase Edge Function → Gemini Vision API
      */
     processAIPhoto(file) {
-        // Show loading modal
-        const overlay = document.getElementById('modal-overlay');
+        const overlay = document.getElementById('dynamic-overlay');
         overlay.innerHTML = `
             <div class="modal ai-analysis-modal">
                 <div class="ai-analysis-content">
@@ -694,39 +693,59 @@ const App = {
         `;
         overlay.classList.remove('hidden');
 
-        // Simulate AI processing (in production, call real API)
-        setTimeout(() => {
-            this.showAIResults();
-        }, 2000);
+        // Convert image to base64 and send to Edge Function
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64Image = e.target.result;
+
+            try {
+                const supabaseUrl = SupabaseService.getProjectUrl ? SupabaseService.getProjectUrl() : null;
+                const url = supabaseUrl
+                    ? `${supabaseUrl}/functions/v1/analyze-food-image`
+                    : 'https://essvmsmelsjpbyaemhns.supabase.co/functions/v1/analyze-food-image';
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Image })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error('AI analysis error:', data.error);
+                    Utils.showToast('Error al analizar la imagen. Intentá de nuevo.', 'error');
+                    overlay.classList.add('hidden');
+                    overlay.innerHTML = '';
+                    return;
+                }
+
+                const detectedFoods = data.foods || [];
+                if (detectedFoods.length === 0) {
+                    Utils.showToast('No se detectaron alimentos en la imagen. Probá con otra foto.', 'warning');
+                    overlay.classList.add('hidden');
+                    overlay.innerHTML = '';
+                    return;
+                }
+
+                await this.showAIResults(detectedFoods);
+            } catch (err) {
+                console.error('AI photo processing error:', err);
+                Utils.showToast('Error de conexión con el servicio de IA', 'error');
+                overlay.classList.add('hidden');
+                overlay.innerHTML = '';
+            }
+        };
+        reader.readAsDataURL(file);
     },
 
     /**
      * Show AI recognition results
-     * Searches detected foods against Supabase database
-     * Falls back to local FoodsDatabase if Supabase unavailable
+     * Receives actual detected foods from AI and matches against Supabase database
+     * @param {Array} aiDetections - Array of {name, confidence, estimated_grams}
      */
-    async showAIResults() {
-        // Simulated food detection (in production: real AI API returns these names)
-        const possibleDetections = [
-            { name: 'Pechuga de pollo', confidence: 95 },
-            { name: 'Arroz blanco', confidence: 92 },
-            { name: 'Lechuga', confidence: 85 },
-            { name: 'Tomate', confidence: 88 },
-            { name: 'Milanesa de carne', confidence: 78 },
-            { name: 'Papa', confidence: 82 },
-            { name: 'Empanada', confidence: 90 },
-            { name: 'Bife', confidence: 87 },
-            { name: 'Huevo', confidence: 91 },
-            { name: 'Ensalada', confidence: 80 },
-            { name: 'Asado', confidence: 93 },
-            { name: 'Choripán', confidence: 86 }
-        ];
-
-        // Randomly select 2-4 foods to simulate detection
-        const numFoods = Math.floor(Math.random() * 3) + 2;
-        const shuffled = possibleDetections.sort(() => 0.5 - Math.random());
-        const simDetected = shuffled.slice(0, numFoods);
-        const detectedNames = simDetected.map(d => d.name);
+    async showAIResults(aiDetections) {
+        const detectedNames = aiDetections.map(d => d.name);
 
         // Try to match against Supabase database first
         let detectedFoods = [];
@@ -734,12 +753,13 @@ const App = {
         if (SupabaseService.isAvailable()) {
             try {
                 const aiMatches = await SupabaseService.matchFoodsFromAI(detectedNames);
-                detectedFoods = simDetected.map(det => {
-                    const match = aiMatches.find(m => m.detected === det.name);
+                detectedFoods = aiDetections.map(det => {
+                    const match = aiMatches.find(m => m.detected.toLowerCase() === det.name.toLowerCase());
                     const food = match && match.matches.length > 0 ? match.matches[0] : null;
                     return {
                         name: det.name,
                         confidence: det.confidence,
+                        estimatedGrams: det.estimated_grams || 100,
                         food: food ? {
                             id: food.id,
                             name: food.name,
@@ -761,17 +781,18 @@ const App = {
 
         // Fallback to local FoodsDatabase if Supabase didn't work
         if (detectedFoods.length === 0) {
-            detectedFoods = simDetected.map(det => {
+            detectedFoods = aiDetections.map(det => {
                 const results = FoodsDatabase.search(det.name);
                 return {
                     name: det.name,
                     confidence: det.confidence,
+                    estimatedGrams: det.estimated_grams || 100,
                     food: results.length > 0 ? results[0] : null
                 };
             });
         }
 
-        const overlay = document.getElementById('modal-overlay');
+        const overlay = document.getElementById('dynamic-overlay');
         overlay.innerHTML = `
             <div class="modal ai-analysis-modal">
                 <div class="modal-header">
@@ -792,10 +813,10 @@ const App = {
                             <div class="ai-food-suggestion" data-food-id="${item.food?.id || ''}" data-food-name="${item.name}" data-food-json='${item.food ? JSON.stringify(item.food) : ''}'>
                                 <div style="flex: 1;">
                                     <div style="font-weight: 600;">${item.food?.name || item.name}</div>
-                                    <div class="ai-confidence">Confianza: ${item.confidence}%</div>
+                                    <div class="ai-confidence">Confianza: ${item.confidence}% · ~${item.estimatedGrams}g</div>
                                 </div>
                                 <div style="color: var(--primary); font-weight: 600;">
-                                    ${item.food?.calories || '~150'} kcal
+                                    ${item.food ? Math.round(item.food.calories * (item.estimatedGrams / 100)) : '~150'} kcal
                                 </div>
                             </div>
                         `).join('')}
@@ -813,7 +834,6 @@ const App = {
         document.getElementById('close-ai-modal')?.addEventListener('click', () => {
             overlay.classList.add('hidden');
             overlay.innerHTML = '';
-            location.reload();
         });
 
         // Click on individual food suggestion
@@ -826,6 +846,7 @@ const App = {
                     try {
                         const food = JSON.parse(foodJson);
                         overlay.classList.add('hidden');
+                        overlay.innerHTML = '';
                         this.selectFood(food);
                     } catch (e) {
                         Utils.showToast(`No se pudo procesar ${foodName}`, 'warning');
@@ -837,30 +858,31 @@ const App = {
         });
 
         // Add all detected foods
-        document.getElementById('ai-add-all')?.addEventListener('click', () => {
-            detectedFoods.forEach(item => {
+        document.getElementById('ai-add-all')?.addEventListener('click', async () => {
+            for (const item of detectedFoods) {
                 if (item.food) {
+                    const grams = item.estimatedGrams || item.food.servingSize || 100;
                     const entry = {
                         id: Utils.generateId(),
                         foodId: item.food.id,
                         foodName: item.food.name,
                         mealType: this.currentMealType || 'lunch',
-                        quantity: item.food.servingSize || 100,
+                        quantity: grams,
                         unit: 'g',
-                        calories: Math.round(item.food.calories * ((item.food.servingSize || 100) / 100)),
-                        protein: Math.round(item.food.protein * ((item.food.servingSize || 100) / 100)),
-                        carbs: Math.round(item.food.carbs * ((item.food.servingSize || 100) / 100)),
-                        fat: Math.round(item.food.fat * ((item.food.servingSize || 100) / 100)),
+                        calories: Math.round(item.food.calories * (grams / 100)),
+                        protein: Math.round(item.food.protein * (grams / 100)),
+                        carbs: Math.round(item.food.carbs * (grams / 100)),
+                        fat: Math.round(item.food.fat * (grams / 100)),
                         timestamp: new Date().toISOString()
                     };
-                    Storage.addFoodEntry(entry, this.currentDate);
+                    await Storage.addFoodEntry(entry, this.currentDate);
                 }
-            });
+            }
 
             Utils.showToast(`${detectedFoods.filter(f => f.food).length} alimentos agregados al diario`, 'success');
             overlay.classList.add('hidden');
+            overlay.innerHTML = '';
             this.switchView('dashboard');
-            location.reload();
         });
     },
 
@@ -1684,20 +1706,19 @@ const App = {
             </div>
         `;
 
-        // Show in modal overlay
-        const overlay = document.getElementById('modal-overlay');
+        // Show in dynamic overlay (separate from main modals)
+        const overlay = document.getElementById('dynamic-overlay');
         overlay.innerHTML = modalHtml;
         overlay.classList.remove('hidden');
 
         // Close button
         document.getElementById('close-recipe-modal')?.addEventListener('click', () => {
             overlay.classList.add('hidden');
-            // Restore original modals
-            location.reload(); // Simple solution - refresh to restore modals
+            overlay.innerHTML = '';
         });
 
         // Add to journal button
-        document.getElementById('add-recipe-to-journal')?.addEventListener('click', () => {
+        document.getElementById('add-recipe-to-journal')?.addEventListener('click', async () => {
             // Create a food entry from the recipe
             const entry = {
                 id: Utils.generateId(),
@@ -1713,11 +1734,11 @@ const App = {
                 timestamp: new Date().toISOString()
             };
 
-            Storage.addFoodEntry(entry, this.currentDate);
+            await Storage.addFoodEntry(entry, this.currentDate);
             Utils.showToast('Receta agregada al diario', 'success');
             overlay.classList.add('hidden');
+            overlay.innerHTML = '';
             this.switchView('dashboard');
-            location.reload();
         });
     },
 

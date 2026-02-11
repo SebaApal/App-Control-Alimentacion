@@ -67,16 +67,44 @@ const SupabaseService = {
             });
 
             if (error) {
+                // Handle duplicate email
+                if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+                    return { success: false, error: 'Este email ya está registrado. Intentá iniciar sesión.' };
+                }
                 return { success: false, error: error.message };
+            }
+
+            // Check if email already exists (Supabase returns empty identities)
+            if (data.user?.identities?.length === 0) {
+                return { success: false, error: 'Este email ya está registrado. Intentá iniciar sesión.' };
+            }
+
+            // If no session returned (email confirmation pending), auto-login
+            if (!data.session && data.user) {
+                // Wait briefly for the auto-confirm trigger to run
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Auto sign-in since email is auto-confirmed by trigger
+                const signInResult = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (signInResult.data?.session) {
+                    return {
+                        success: true,
+                        user: signInResult.data.user,
+                        session: signInResult.data.session,
+                        message: 'Cuenta creada exitosamente'
+                    };
+                }
             }
 
             return {
                 success: true,
                 user: data.user,
                 session: data.session,
-                message: data.user?.identities?.length === 0
-                    ? 'Este email ya está registrado'
-                    : 'Cuenta creada exitosamente'
+                message: 'Cuenta creada exitosamente'
             };
         } catch (err) {
             console.error('SignUp error:', err);

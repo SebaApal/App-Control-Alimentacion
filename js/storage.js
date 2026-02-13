@@ -69,10 +69,23 @@ const Storage = {
      * @returns {Promise<boolean>}
      */
     async isLoggedIn() {
-        // Primero intentar con Supabase
+        // Primero intentar con Supabase (con timeout para free tier)
         if (typeof SupabaseService !== 'undefined' && SupabaseService.isAvailable()) {
-            const session = await SupabaseService.getSession();
-            return session !== null;
+            try {
+                const sessionPromise = SupabaseService.getSession();
+                const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 3000));
+                const result = await Promise.race([sessionPromise, timeoutPromise]);
+
+                if (result === 'TIMEOUT') {
+                    console.warn('⚠️ Supabase session check timed out, using localStorage');
+                    const user = this.getLocalUser();
+                    return user !== null;
+                }
+
+                if (result !== null) return true;
+            } catch (err) {
+                console.warn('⚠️ Supabase session check failed:', err);
+            }
         }
 
         // Fallback a localStorage
@@ -238,8 +251,12 @@ const Storage = {
      */
     async hasCompleteProfile() {
         const profile = await this.getProfile();
-        return profile && profile.weight && profile.height && profile.age &&
-            profile.sex && profile.activity_level && profile.goal;
+        if (!profile) return false;
+
+        // Soportar ambos formatos (camelCase y snake_case)
+        const activityLevel = profile.activityLevel || profile.activity_level;
+        return !!(profile.weight && profile.height && profile.age &&
+            profile.sex && activityLevel && profile.goal);
     },
 
     /**
@@ -269,16 +286,28 @@ const Storage = {
      * @returns {Promise<Object|null>}
      */
     async getProfile() {
-        // Intentar con Supabase primero
+        // Intentar con Supabase primero (con timeout)
         if (typeof SupabaseService !== 'undefined' && SupabaseService.isAvailable()) {
-            const profile = await SupabaseService.getProfile();
-            if (profile) {
-                // Convertir snake_case a camelCase para compatibilidad
-                const normalizedProfile = this._normalizeProfile(profile);
-                this._cache.profile = normalizedProfile;
-                // También guardar en localStorage para acceso rápido
-                localStorage.setItem(this.KEYS.PROFILE, JSON.stringify(normalizedProfile));
-                return normalizedProfile;
+            try {
+                const profilePromise = SupabaseService.getProfile();
+                const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 3000));
+                const result = await Promise.race([profilePromise, timeoutPromise]);
+
+                if (result === 'TIMEOUT') {
+                    console.warn('⚠️ Supabase profile fetch timed out, using localStorage');
+                    return this.getLocalProfile();
+                }
+
+                if (result) {
+                    // Convertir snake_case a camelCase para compatibilidad
+                    const normalizedProfile = this._normalizeProfile(result);
+                    this._cache.profile = normalizedProfile;
+                    // También guardar en localStorage para acceso rápido
+                    localStorage.setItem(this.KEYS.PROFILE, JSON.stringify(normalizedProfile));
+                    return normalizedProfile;
+                }
+            } catch (err) {
+                console.warn('⚠️ Supabase profile fetch failed:', err);
             }
         }
 

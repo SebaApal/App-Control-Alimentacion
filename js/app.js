@@ -672,6 +672,96 @@ const App = {
                 this.processAIPhoto(file);
             }
         });
+
+        // Browse categories button
+        document.getElementById('browse-categories-btn')?.addEventListener('click', () => {
+            const browser = document.getElementById('category-browser');
+            if (browser) {
+                browser.classList.toggle('hidden');
+                if (!browser.classList.contains('hidden') && !browser.dataset.initialized) {
+                    this.initCategoryBrowser();
+                    browser.dataset.initialized = 'true';
+                }
+                // Scroll into view
+                if (!browser.classList.contains('hidden')) {
+                    browser.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        });
+
+        // Close category browser
+        document.getElementById('close-category-browser')?.addEventListener('click', () => {
+            document.getElementById('category-browser')?.classList.add('hidden');
+        });
+    },
+
+    /**
+     * Initialize category browser with chips from FoodsDatabase
+     */
+    initCategoryBrowser() {
+        const chipsContainer = document.getElementById('category-chips');
+        if (!chipsContainer || typeof FoodsDatabase === 'undefined') return;
+
+        chipsContainer.innerHTML = '';
+
+        // Skip 'all' category, users will see all via search
+        const categories = FoodsDatabase.categories.filter(c => c.id !== 'all');
+
+        categories.forEach(cat => {
+            const chip = document.createElement('button');
+            chip.className = 'category-chip';
+            chip.dataset.categoryId = cat.id;
+            chip.innerHTML = `
+                <span class="category-chip-icon">${cat.icon}</span>
+                <span>${cat.name}</span>
+            `;
+
+            chip.addEventListener('click', () => {
+                // Toggle active state
+                chipsContainer.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                this.showCategoryFoods(cat.id);
+            });
+
+            chipsContainer.appendChild(chip);
+        });
+    },
+
+    /**
+     * Show foods for a given category in the grid
+     */
+    showCategoryFoods(categoryId) {
+        const grid = document.getElementById('category-food-grid');
+        if (!grid || typeof FoodsDatabase === 'undefined') return;
+
+        const foods = FoodsDatabase.foods.filter(f => f.category === categoryId);
+
+        if (foods.length === 0) {
+            grid.innerHTML = '<p class="category-hint">No hay alimentos en esta categoría</p>';
+            return;
+        }
+
+        grid.innerHTML = '';
+
+        foods.forEach(food => {
+            const card = document.createElement('div');
+            card.className = 'category-food-card';
+            card.innerHTML = `
+                <div class="category-food-name" title="${food.name}">${food.name}</div>
+                <div class="category-food-macros">
+                    <span class="macro-tag cal">${food.calories} kcal</span>
+                    <span class="macro-tag prot">P ${food.protein}g</span>
+                    <span class="macro-tag carb">C ${food.carbs}g</span>
+                    <span class="macro-tag fat-tag">G ${food.fat}g</span>
+                </div>
+            `;
+
+            card.addEventListener('click', () => {
+                this.selectFood(food);
+            });
+
+            grid.appendChild(card);
+        });
     },
 
     /**

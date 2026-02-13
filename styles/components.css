@@ -1600,3 +1600,208 @@
     color: var(--text-muted);
     line-height: 1.3;
 }
+
+/* ========================================
+   Category Browser
+   ======================================== */
+.category-browser-section {
+    margin-bottom: var(--space-lg);
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    box-shadow: var(--shadow-sm);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.category-browser-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-md);
+}
+
+.category-browser-header h3 {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.close-section-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: none;
+    border-radius: var(--radius-full);
+    color: var(--text-muted);
+    font-size: var(--font-size-base);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.close-section-btn:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+.category-chips-scroll {
+    overflow-x: auto;
+    margin: 0 calc(-1 * var(--space-lg));
+    padding: 0 var(--space-lg);
+    margin-bottom: var(--space-lg);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.category-chips-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.category-chips {
+    display: flex;
+    gap: var(--space-sm);
+    padding-bottom: var(--space-xs);
+}
+
+.category-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.category-chip:hover {
+    border-color: var(--primary-light);
+    background: rgba(212, 175, 55, 0.05);
+}
+
+.category-chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-white);
+}
+
+.category-chip-icon {
+    font-size: var(--font-size-base);
+}
+
+.category-food-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.category-food-grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.category-food-grid::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.category-hint {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    padding: var(--space-xl) 0;
+}
+
+.category-food-card {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-md);
+    background: var(--bg-secondary);
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.category-food-card:hover {
+    border-color: var(--primary-light);
+    background: rgba(212, 175, 55, 0.05);
+    transform: translateY(-2px);
+}
+
+.category-food-card:active {
+    transform: translateY(0);
+}
+
+.category-food-name {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.category-food-macros {
+    display: flex;
+    gap: var(--space-sm);
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.category-food-macros .macro-tag {
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+}
+
+.macro-tag.cal {
+    background: rgba(212, 175, 55, 0.15);
+    color: var(--primary);
+}
+
+.macro-tag.prot {
+    background: var(--protein-bg);
+    color: var(--protein);
+}
+
+.macro-tag.carb {
+    background: var(--carbs-bg);
+    color: var(--carbs);
+}
+
+.macro-tag.fat-tag {
+    background: var(--fat-bg);
+    color: var(--fat);
+}
+
+/* Quick add buttons - 4 columns on mobile */
+@media (max-width: 400px) {
+    .quick-add-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

@@ -452,6 +452,10 @@
                     <div class="quick-add-section">
                         <h3>Acceso Rápido</h3>
                         <div class="quick-add-buttons">
+                            <button class="quick-add-btn" id="browse-categories-btn">
+                                <span class="qa-icon">📋</span>
+                                <span>Explorar categorías</span>
+                            </button>
                             <button class="quick-add-btn" id="add-custom-food">
                                 <span class="qa-icon">✏️</span>
                                 <span>Crear alimento</span>
@@ -467,6 +471,21 @@
                         </div>
                     </div>
 
+                    <!-- Category Browser Section -->
+                    <div class="category-browser-section hidden" id="category-browser">
+                        <div class="category-browser-header">
+                            <h3>Explorar por Categoría</h3>
+                            <button class="close-section-btn" id="close-category-browser">✕</button>
+                        </div>
+                        <div class="category-chips-scroll">
+                            <div class="category-chips" id="category-chips">
+                                <!-- Category chips will be inserted by JS -->
+                            </div>
+                        </div>
+                        <div class="category-food-grid" id="category-food-grid">
+                            <p class="category-hint">Seleccioná una categoría para ver alimentos</p>
+                        </div>
+                    </div>
 
                     <!-- Search Results -->
                     <div class="search-results" id="search-results">
